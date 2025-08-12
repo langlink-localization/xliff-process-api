@@ -40,7 +40,7 @@ fi
 
 # 启动服务器
 echo "启动服务器..."
-echo "API文档地址: http://localhost:8000/docs"
-echo "健康检查: http://localhost:8000/health"
+echo "API文档地址: http://localhost:8848/docs"
+echo "健康检查: http://localhost:8848/health"
 echo ""
 python main.py

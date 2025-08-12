@@ -35,18 +35,43 @@ cd xliff-process-api
 pip install -r requirements.txt
 ```
 
+#### 配置访问密钥
+
+复制环境变量配置文件并设置你的访问密钥：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件，设置你的访问密钥：
+```env
+API_ACCESS_KEY=your-secure-access-key-here
+```
+
+建议使用以下命令生成安全的随机密钥：
+```bash
+openssl rand -hex 32
+```
+
 #### 启动服务器
 
 ```bash
 python main.py
 ```
 
-服务器将在 `http://localhost:8000` 启动
+服务器将在 `http://localhost:8848` 启动
 
 ### 2. Docker部署
 
 #### 使用Docker Compose
 
+首先设置环境变量：
+```bash
+cp .env.example .env
+# 编辑 .env 文件设置 API_ACCESS_KEY
+```
+
+启动服务：
 ```bash
 docker-compose up -d
 ```
@@ -54,16 +79,47 @@ docker-compose up -d
 #### 单独构建Docker镜像
 
 ```bash
-docker build -t translate-toolkit-api .
-docker run -p 8000:8000 translate-toolkit-api
+docker build -t xliff-process-api .
+docker run -p 8848:8848 -e API_ACCESS_KEY=your-secure-key xliff-process-api
 ```
 
 ## API文档
 
 启动服务器后，访问以下地址查看API文档：
 
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+- Swagger UI: `http://localhost:8848/docs`
+- ReDoc: `http://localhost:8848/redoc`
+
+## API认证
+
+为了保护API安全，所有API端点（除了健康检查和文档端点）都需要提供访问密钥进行认证。
+
+### 认证方式
+
+支持两种认证方式：
+
+#### 1. Authorization Header（推荐）
+
+在请求头中添加 Bearer Token：
+```
+Authorization: Bearer your-access-key-here
+```
+
+#### 2. 查询参数
+
+在URL中添加 `access_key` 参数：
+```
+http://localhost:8848/api/xliff/process?access_key=your-access-key-here
+```
+
+### 无需认证的端点
+
+以下端点不需要认证：
+- `/` - 根路径
+- `/health` - 健康检查
+- `/docs` - Swagger文档
+- `/redoc` - ReDoc文档
+- `/openapi.json` - OpenAPI规范
 
 ## API端点
 
@@ -241,12 +297,16 @@ pytest tests/ -v
 ### JavaScript/TypeScript
 
 ```typescript
-// 处理XLIFF文件
+const API_ACCESS_KEY = 'your-access-key-here';
+const API_BASE_URL = 'http://localhost:8848';
+
+// 处理XLIFF文件（使用 Authorization Header）
 async function processXliff(fileName: string, content: string) {
-  const response = await fetch('http://localhost:8000/api/xliff/process', {
+  const response = await fetch(`${API_BASE_URL}/api/xliff/process`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_ACCESS_KEY}`
     },
     body: JSON.stringify({
       fileName,
@@ -254,23 +314,103 @@ async function processXliff(fileName: string, content: string) {
     }),
   });
   
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('认证失败：需要提供访问密钥');
+    } else if (response.status === 403) {
+      throw new Error('认证失败：访问密钥无效');
+    }
+    throw new Error(`请求失败: ${response.statusText}`);
+  }
+  
   const result = await response.json();
   return result.data;
 }
 
-// 上传XLIFF文件
+// 上传XLIFF文件（使用查询参数）
 async function uploadXliff(file: File) {
   const formData = new FormData();
   formData.append('file', file);
   
-  const response = await fetch('http://localhost:8000/api/xliff/upload', {
+  const response = await fetch(`${API_BASE_URL}/api/xliff/upload?access_key=${API_ACCESS_KEY}`, {
     method: 'POST',
     body: formData,
   });
   
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('认证失败：需要提供访问密钥');
+    } else if (response.status === 403) {
+      throw new Error('认证失败：访问密钥无效');
+    }
+    throw new Error(`请求失败: ${response.statusText}`);
+  }
+  
   const result = await response.json();
   return result.data;
 }
+```
+
+### Python
+
+```python
+import requests
+
+API_ACCESS_KEY = 'your-access-key-here'
+API_BASE_URL = 'http://localhost:8848'
+
+def process_xliff(file_name: str, content: str):
+    """处理XLIFF文件"""
+    headers = {
+        'Authorization': f'Bearer {API_ACCESS_KEY}'
+    }
+    
+    response = requests.post(
+        f'{API_BASE_URL}/api/xliff/process',
+        headers=headers,
+        json={
+            'fileName': file_name,
+            'content': content
+        }
+    )
+    
+    if response.status_code == 401:
+        raise Exception('认证失败：需要提供访问密钥')
+    elif response.status_code == 403:
+        raise Exception('认证失败：访问密钥无效')
+    
+    response.raise_for_status()
+    return response.json()['data']
+
+def upload_xliff(file_path: str):
+    """上传XLIFF文件"""
+    with open(file_path, 'rb') as f:
+        files = {'file': f}
+        params = {'access_key': API_ACCESS_KEY}
+        
+        response = requests.post(
+            f'{API_BASE_URL}/api/xliff/upload',
+            files=files,
+            params=params
+        )
+        
+        response.raise_for_status()
+        return response.json()['data']
+```
+
+### cURL
+
+```bash
+# 使用 Authorization Header
+curl -X POST "http://localhost:8848/api/xliff/process" \
+  -H "Authorization: Bearer your-access-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{"fileName": "test.xliff", "content": "<?xml version=\"1.0\"?>..."}'
+
+# 使用查询参数
+curl -X POST "http://localhost:8848/api/xliff/process?access_key=your-access-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{"fileName": "test.xliff", "content": "<?xml version=\"1.0\"?>..."}'
 ```
 
 ## 性能优化建议
@@ -284,9 +424,10 @@ async function uploadXliff(file: File) {
 
 可以通过环境变量配置服务器：
 
+- `API_ACCESS_KEY`: API访问密钥（必填，用于保护API安全）
 - `LOG_LEVEL`: 日志级别 (debug, info, warning, error)
 - `HOST`: 服务器主机地址 (默认: 0.0.0.0)
-- `PORT`: 服务器端口 (默认: 8000)
+- `PORT`: 服务器端口 (默认: 8848)
 
 ## 对比原JavaScript方案的优势
 

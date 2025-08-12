@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from api.routes import xliff, tmx, file_replacement
+from config import settings
 import uvicorn
 import logging
 from contextlib import asynccontextmanager
@@ -23,20 +25,61 @@ async def lifespan(app: FastAPI):
 
 # 创建FastAPI应用
 app = FastAPI(
-    title="XLIFF Process API Server",
-    description="基于Translate Toolkit的XLIFF处理API服务",
-    version="1.0.0",
+    title=settings.API_TITLE,
+    description=settings.API_DESCRIPTION,
+    version=settings.API_VERSION,
     lifespan=lifespan
 )
 
 # 配置CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"],  # 常见前端开发端口
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
+# 添加认证中间件
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # 检查是否是排除的路径
+    if request.url.path in settings.EXCLUDE_PATHS:
+        response = await call_next(request)
+        return response
+    
+    # 获取access_key
+    access_key = None
+    
+    # 从 X-Access-Key header 获取 (优先)
+    access_key = request.headers.get("X-Access-Key")
+    
+    # 从 Authorization header 获取 (fallback)
+    if not access_key:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            access_key = auth_header[7:]
+    
+    # 从查询参数获取 (最后选择)
+    if not access_key:
+        access_key = request.query_params.get("access_key")
+    
+    # 验证 access_key
+    if not access_key:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Access key required"}
+        )
+    
+    if access_key != settings.ACCESS_KEY:
+        logger.warning(f"Invalid access key attempted from {request.client.host}")
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Invalid access key"}
+        )
+    
+    response = await call_next(request)
+    return response
 
 # 注册路由
 app.include_router(xliff.router)
@@ -65,8 +108,8 @@ async def health_check():
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=settings.HOST,
+        port=settings.PORT,
         reload=True,
         log_level="info"
     )
