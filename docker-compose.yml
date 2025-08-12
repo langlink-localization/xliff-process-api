@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    container_name: xliff-process-api
+    ports:
+      - '8000:8000'
+    environment:
+      - LOG_LEVEL=info
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - xliff-network
+
+  # 可选：添加Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: xliff-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - xliff-network
+
+networks:
+  xliff-network:
+    driver: bridge
+
+volumes:
+  redis-data:

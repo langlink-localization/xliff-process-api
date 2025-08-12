@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="zh" datatype="plaintext" original="sample.txt">
+    <header>
+      <tool tool-id="translate-toolkit" tool-name="Translate Toolkit"/>
+    </header>
+    <body>
+      <trans-unit id="greeting" percent="100">
+        <source>Hello World</source>
+        <target>你好世界</target>
+        <note>Common greeting message</note>
+      </trans-unit>
+      <trans-unit id="welcome" percent="75">
+        <source>Welcome to our application</source>
+        <target>欢迎使用我们的应用程序</target>
+      </trans-unit>
+      <trans-unit id="menu.file" percent="100">
+        <source>File</source>
+        <target>文件</target>
+      </trans-unit>
+      <trans-unit id="menu.edit" percent="100">
+        <source>Edit</source>
+        <target>编辑</target>
+      </trans-unit>
+      <trans-unit id="menu.view" percent="50">
+        <source>View</source>
+        <target>查看</target>
+      </trans-unit>
+      <trans-unit id="menu.help" percent="0">
+        <source>Help</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="button.ok" percent="100">
+        <source>OK</source>
+        <target>确定</target>
+      </trans-unit>
+      <trans-unit id="button.cancel" percent="100">
+        <source>Cancel</source>
+        <target>取消</target>
+      </trans-unit>
+      <trans-unit id="message.error">
+        <source>An error occurred</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="message.success" percent="100">
+        <source>Operation completed successfully</source>
+        <target>操作成功完成</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

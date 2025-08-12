@@ -1,0 +1,9 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+translate-toolkit==3.13.5
+pydantic==2.10.3
+python-multipart==0.0.17
+lxml==5.3.0
+httpx==0.28.0
+pytest==8.3.4
+pytest-asyncio==0.25.0
